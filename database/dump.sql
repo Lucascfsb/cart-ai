@@ -1,7 +1,10 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 
-DROP TABLE IF EXISTS stores;
-DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS stores CASCADE;
+DROP TABLE IF EXISTS products CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS carts CASCADE;
+DROP TABLE IF EXISTS cart_items CASCADE;
 
 CREATE TABLE stores (
     id SERIAL PRIMARY KEY,
@@ -17,11 +20,39 @@ CREATE TABLE products (
     embedding VECTOR(1536)
 );
 
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE carts (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    store_id INTEGER REFERENCES stores(id),
+    active BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE cart_items (
+    id SERIAL PRIMARY KEY,
+    cart_id INTEGER REFERENCES carts(id),
+    product_id INTEGER REFERENCES products(id),
+    quantity INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_cart_product UNIQUE (cart_id, product_id)
+);
+
+INSERT INTO users (name, email, password) VALUES
+    ('John Doe', 'johndoe@email.com', 'password123');
+
 -- Lojas
 INSERT INTO stores (name) VALUES
-  ('Supermercado Central'),
-  ('Mercado Econômico'),
-  ('SuperShop Express');
+    ('Supermercado Central'),
+    ('Mercado Econômico'),
+    ('SuperShop Express');
 
 -- Produtos
 INSERT INTO products (name, price, store_id) VALUES
