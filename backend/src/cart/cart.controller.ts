@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, NotFoundException, Param, Post, Put } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, NotFoundException, Param, Post, Put } from "@nestjs/common";
 import { CartService } from "./cart.service";
 
 @Controller('cart')
@@ -37,5 +37,12 @@ export class CartController {
       Number(productId),
       body.quantity,
     );
+  }
+
+  @Delete(':cartId/items/:productId')
+  async removeCartItem(
+    @Param('productId') productId: string,
+  ) {
+    await this.cartService.removeCartItem(this.userId, Number(productId));
   }
 }
