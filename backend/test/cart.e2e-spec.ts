@@ -4,7 +4,6 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PostgresService } from '../src/shared/postgres.service';
-import e from 'express';
 
 describe('Cart (e2e)', () => {
   let app: INestApplication<App>;
@@ -43,7 +42,7 @@ describe('Cart (e2e)', () => {
     expect(responseCart.body.items[0].quantity).toBe(2);
   })
 
-  it('shoudl add a product to an existing cart if the store is the same', async () => {
+  it('should add a product to an existing cart if the store is the same', async () => {
     const response = await request(app.getHttpServer()).post('/cart').send({
       productId: 1,
       quantity: 2
@@ -70,10 +69,18 @@ describe('Cart (e2e)', () => {
     expect(responseCart.body.id).toBe(response2.body.id);
     expect(responseCart.body.id).toBe(response3.body.id);
     expect(responseCart.body.items.length).toBe(2);
-    expect(responseCart.body.items[0].id).toBe(1);
-    expect(responseCart.body.items[0].quantity).toBe(2);
-    expect(responseCart.body.items[1].id).toBe(2);
-    expect(responseCart.body.items[1].quantity).toBe(4);
+    expect(responseCart.body.items).toContainEqual(
+      expect.objectContaining({
+        id: 1,
+        quantity: 2,
+      }),
+    );
+    expect(responseCart.body.items).toContainEqual(
+      expect.objectContaining({
+        id: 2,
+        quantity: 4,
+      }),
+    )
   })
 
   it('should create a new cart if the store is different', async () => {
