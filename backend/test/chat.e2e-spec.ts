@@ -62,7 +62,7 @@ describe('Chat (e2e)', () => {
     expect(getResponse.body.messages[1]).toHaveProperty('sender', 'assistant');
   })
 
-    it("should add new message to chat session", async () => {
+    it("should add new message to chat session with action", async () => {
     const postResponse = await request(app.getHttpServer()).post('/chat')
     expect(postResponse.status).toBe(201);
     expect(postResponse.body).toHaveProperty('id');
@@ -84,5 +84,17 @@ describe('Chat (e2e)', () => {
     expect(getResponse.body.messages[0]).toHaveProperty('content', "Quero prepara um bolo de chocolate.");
     expect(getResponse.body.messages[1]).toHaveProperty('sender', 'assistant');
     expect(getResponse.body.messages[1]).toHaveProperty('action');
+
+    const postConfirmResponse = await request(app.getHttpServer())
+      .post(`/chat/${sessionId}/action/${getResponse.body.messages[1].actions[0].id}/confirm`)
+
+    expect(postConfirmResponse.status).toBe(201);
+    
+
+    const getAfterConfirmResponse = await request(app.getHttpServer()).get(`/chat/${sessionId}`);
+
+    expect(getAfterConfirmResponse.status).toBe(200);
+    expect(getAfterConfirmResponse.body.messages).toHaveLength(3);
+    expect(getAfterConfirmResponse.body.messages[2]).toHaveProperty('sender', 'assistant');
   })
 })
