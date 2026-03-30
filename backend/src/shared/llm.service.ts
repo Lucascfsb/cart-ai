@@ -41,10 +41,12 @@ export class LlmService {
 
   async answerMessage(
     message: string,
+    previousMessageId: string | null = null,
   ): Promise<(AnswerMessage & { responseId: string }) | null> {
     try {
       console.log('LlmService.answerMessage called with message:', message);
       const response = await this.client.responses.parse({
+        previous_response_id: previousMessageId,
         model: 'gpt-4.1-nano',
         instructions: LlmService.ANSWER_MESSAGE_PROMPT,
         input: message,
@@ -58,6 +60,7 @@ export class LlmService {
       );
 
       if (!response.output_parsed) {
+        console.error('No parsed output from LLM response:', JSON.stringify(response));
         return null;
       }
 
