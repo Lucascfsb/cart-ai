@@ -1,5 +1,7 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, OnApplicationBootstrap } from "@nestjs/common";
 import { PostgresService } from "../shared/postgres.service";
+import { LlmService } from "src/shared/llm.service";
+import { ConfigService } from "@nestjs/config";
 
 type Product = {
   id: number;
@@ -10,8 +12,43 @@ type Product = {
 }
 
 @Injectable()
-export class CatalogService {
-  constructor(private readonly postgresService: PostgresService) {}
+export class CatalogService implements OnApplicationBootstrap {
+  constructor(private readonly postgresService: PostgresService, private  llmService: LlmService, private configService: ConfigService) {}
+
+  async onApplicationBootstrap() {
+    if(this.configService.get<string>('NODE_ENV') === 'test') {
+      return;
+    }
+
+    const products = await this.postgresService.client.query<Product>(
+      `SELECT id, name FROM products WHERE embedding IS NULL`
+    );
+
+    if(products.rowCount === 0) {
+      console.log('No products found without embeddings, skipping embedding process');
+      return;
+    }
+
+    await this.llmService.batchEmbedProducts(products.rows);
+  }
+
+  async handleEmbeddingWebhook(rawBody: string, headers: Record<string, string>) {
+    console.log ('CatalogService.handleEmbeddingWebhook called')
+    const results = await this.llmService.handleWebhookEvent(rawBody, headers);
+
+    if(!results || results.length === 0) {
+      console.warn('No results from handleWebhookEvent');
+      return;
+    }
+    for (const result of results) {
+        const { productId, embedding } = result;
+        await this.postgresService.client.query(
+          `UPDATE products SET embedding = $1::vector WHERE id = $2`,
+          [JSON.stringify(embedding), productId]
+        );
+        console.log(`Updated product ${productId} with new embedding`);
+      }
+  }
 
   async getCatalog(search = '') {
     let query = `SELECT products.id, products.name, products.price, products.embedding, json_build_object('id', stores.id, 'name', stores.name) as store FROM products
