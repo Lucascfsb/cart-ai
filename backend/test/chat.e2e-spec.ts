@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { PostgresService } from '../src/shared/postgres.service';
+import { describe, beforeEach, afterEach, it, expect } from '@jest/globals'; 
 
 describe('Chat (e2e)', () => {
   let app: INestApplication<App>;
@@ -90,7 +91,6 @@ describe('Chat (e2e)', () => {
 
     expect(postConfirmResponse.status).toBe(201);
     
-
     const getAfterConfirmResponse = await request(app.getHttpServer()).get(`/chat/${sessionId}`);
 
     expect(getAfterConfirmResponse.status).toBe(200);

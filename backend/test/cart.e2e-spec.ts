@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PostgresService } from '../src/shared/postgres.service';
+import { describe, beforeEach, afterEach, it, expect } from '@jest/globals';
 
 describe('Cart (e2e)', () => {
   let app: INestApplication<App>;
