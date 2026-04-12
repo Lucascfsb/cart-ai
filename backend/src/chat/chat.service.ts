@@ -49,7 +49,7 @@ export class ChatService {
     return result.rows[0];
   }
 
-async getChatSessions(userId: number) {
+  async getChatSessions(userId: number) {
     const result = await this.postgresService.client.query<ChatSession>(
       `SELECT
         cs.id,

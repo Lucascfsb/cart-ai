@@ -1,7 +1,8 @@
-import { Module } from "@nestjs/common";
-import { LlmService } from "./llm.service";
-import { OpenAiLlmService } from "./openai-llm.service";
-import { ConfigService } from "@nestjs/config";
+import { Module } from '@nestjs/common';
+import { LlmService } from './llm.service';
+import { OpenAiLlmService } from './openai-llm.service';
+import { ConfigService } from '@nestjs/config';
+import { GeminiLlmService } from './gemini-llm.service';
 
 @Module({
   providers: [
@@ -12,13 +13,16 @@ import { ConfigService } from "@nestjs/config";
         if (provider === 'openai') {
           return new OpenAiLlmService(configService);
         }
+
+        if (provider === 'gemini') {
+          return new GeminiLlmService();
+        }
+
         throw new Error(`Unsupported LLM provider: ${provider}`);
       },
       inject: [ConfigService],
-    }
+    },
   ],
-  exports: [
-    LlmService
-  ]
+  exports: [LlmService],
 })
 export class LlmModule {}

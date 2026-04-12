@@ -159,7 +159,7 @@ export class OpenAiLlmService extends LlmService {
 
     if (!uploadedFile.id) {
       console.error('Failed to upload batch file for embedding products');
-      return ;
+      return;
     }
 
     await this.client.batches.create({
