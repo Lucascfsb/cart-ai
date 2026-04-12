@@ -1,30 +1,44 @@
-import { BadRequestException, Body, Controller, Delete, Get, NotFoundException, Param, Post, Put } from "@nestjs/common";
-import { CartService } from "./cart.service";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  NotFoundException,
+  Param,
+  Post,
+  Put,
+} from '@nestjs/common';
+import { CartService } from './cart.service';
 
 @Controller('cart')
 export class CartController {
-  userId = 1; 
+  userId = 1;
 
   constructor(private readonly cartService: CartService) {}
 
   @Post()
   addToCart(@Body() body: { productId: number; quantity: number }) {
-    if(!body.productId || !body.quantity) {
-      throw new BadRequestException('Product ID and quantity are required')
+    if (!body.productId || !body.quantity) {
+      throw new BadRequestException('Product ID and quantity are required');
     }
-    return this.cartService.addToCart(this.userId, body.productId, body.quantity); 
+    return this.cartService.addToCart(
+      this.userId,
+      body.productId,
+      body.quantity,
+    );
   }
 
   @Get()
   async getCart() {
     const cart = await this.cartService.getCart(this.userId);
-    if(!cart) {
-      throw new NotFoundException('No active cart found for the user')
+    if (!cart) {
+      throw new NotFoundException('No active cart found for the user');
     }
     return cart;
   }
 
-@Put(':cartId/items/:productId')
+  @Put(':cartId/items/:productId')
   async updateCartItem(
     @Body() body: { quantity: number },
     @Param('productId') productId: string,
@@ -40,9 +54,7 @@ export class CartController {
   }
 
   @Delete(':cartId/items/:productId')
-  async removeCartItem(
-    @Param('productId') productId: string,
-  ) {
+  async removeCartItem(@Param('productId') productId: string) {
     await this.cartService.removeCartItem(this.userId, Number(productId));
   }
 }

@@ -1,18 +1,30 @@
-import { BadRequestException, Body, Controller, Get, NotFoundException, Param, Post } from "@nestjs/common";
-import { ChatService } from "./chat.service";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  Post,
+} from '@nestjs/common';
+import { ChatService } from './chat.service';
 
 @Controller('chat')
 export class ChatController {
-  private readonly userId = 1; 
+  private readonly userId = 1;
 
-  constructor(
-    private readonly chatService: ChatService
-  ) {}
+  constructor(private readonly chatService: ChatService) {}
 
   @Post()
   async createChatSession() {
     const chatSession = await this.chatService.createChatSession(this.userId);
     return chatSession;
+  }
+
+  @Get()
+  async getChatSessions() {
+    const sessions = await this.chatService.getChatSessions(this.userId);
+    return sessions;
   }
 
   @Get(':sessionId')
@@ -26,8 +38,8 @@ export class ChatController {
 
   @Post(':sessionId/message')
   async addUserMessage(
-    @Param('sessionId') sessionId: number, 
-    @Body('content') content: string
+    @Param('sessionId') sessionId: number,
+    @Body('content') content: string,
   ) {
     if (!content || typeof content !== 'string') {
       throw new BadRequestException('Content must be a non-empty string');
@@ -45,9 +57,7 @@ export class ChatController {
   }
 
   @Post(':cartId/choose')
-  async chooseCart(
-    @Param('cartId') cartId: number,
-  ) {
+  async chooseCart(@Param('cartId') cartId: number) {
     await this.chatService.chooseCart(cartId, this.userId);
   }
 }

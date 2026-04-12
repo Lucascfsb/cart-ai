@@ -33,7 +33,6 @@ const suggestCartsSchema = z.object({
   response: z.string(),
 });
 
-
 type AnswerMessage = z.infer<typeof answerMessageSchema>;
 
 @Injectable()
@@ -120,7 +119,7 @@ export class LlmService {
     });
   }
 
-  async suggestCarts( 
+  async suggestCarts(
     relevantProductsByStore: {
       store_id: number;
       products: {
@@ -132,7 +131,7 @@ export class LlmService {
     }[],
     input: string,
   ) {
-      try {
+    try {
       const response = await this.client.responses.parse({
         model: 'gpt-4.1-nano',
         instructions: LlmService.SUGGEST_CARTS_PROMPT,
@@ -161,56 +160,52 @@ export class LlmService {
     }
   }
 
-  async batchEmbedProducts(products: { id: number; name: string}[]){
+  async batchEmbedProducts(products: { id: number; name: string }[]) {
     const jsonFile = products
-      .map(product => 
-        JSON.stringify({ 
+      .map((product) =>
+        JSON.stringify({
           custom_id: product.id.toString(),
           method: 'POST',
           url: '/v1/embeddings',
           body: {
             model: 'text-embedding-3-small',
             input: product.name,
-          }
-        })
+          },
+        }),
       )
       .join('\n');
 
-      const uploadedFile = await this.client.files.create({
-        file: new File([jsonFile], 'products.jsonl', { type: 'application/jsonl' }),
-        purpose: 'batch',
-      })
+    const uploadedFile = await this.client.files.create({
+      file: new File([jsonFile], 'products.jsonl', {
+        type: 'application/jsonl',
+      }),
+      purpose: 'batch',
+    });
 
-      if(!uploadedFile) {
-        console.error('Failed to upload batch file for embedding products');
-        return null;
-      }
+    if (!uploadedFile) {
+      console.error('Failed to upload batch file for embedding products');
+      return null;
+    }
 
-      await this.client.batches.create({
-        input_file_id: uploadedFile.id,
-        completion_window: '24h',
-        endpoint: '/v1/embeddings',
-      })
+    await this.client.batches.create({
+      input_file_id: uploadedFile.id,
+      completion_window: '24h',
+      endpoint: '/v1/embeddings',
+    });
   }
 
-  async handleWebhookEvent(
-    rawBody: string,
-    headers: Record<string, string>,
-  ) {
+  async handleWebhookEvent(rawBody: string, headers: Record<string, string>) {
     console.log('Received webhook event with headers:', headers);
-    const event = await this.client.webhooks.unwrap(
-      rawBody,
-      headers,
-    );
+    const event = await this.client.webhooks.unwrap(rawBody, headers);
 
     if (event.type !== 'batch.completed') {
-      console.warn('Received non-batch event', event.type)
+      console.warn('Received non-batch event', event.type);
       return;
     }
 
     console.log('Batch completed event received:', event.data.id);
     const batch = await this.client.batches.retrieve(event.data.id);
-    if(!batch || !batch.output_file_id) {
+    if (!batch || !batch.output_file_id) {
       console.error('Failed to retrieve batch or output file', event.data.id);
       return;
     }
@@ -219,11 +214,19 @@ export class LlmService {
     const outputFile = await this.client.files.content(batch.output_file_id);
     const results = (await outputFile.text())
       .split('\n')
-      .filter(line => line.trim() !== '')
+      .filter((line) => line.trim() !== '')
       .map((line) => {
-        const data = JSON.parse(line) as { custom_id: string, response: { body: CreateEmbeddingResponse} };
+        const data = JSON.parse(line) as {
+          custom_id: string;
+          response: { body: CreateEmbeddingResponse };
+        };
 
-        if (!data.response || !data.response.body || !data.response.body.data || data.response.body.data.length === 0) {
+        if (
+          !data.response ||
+          !data.response.body ||
+          !data.response.body.data ||
+          data.response.body.data.length === 0
+        ) {
           console.warn('Invalid response data:', data);
           return null;
         }
@@ -233,20 +236,22 @@ export class LlmService {
           embedding: data.response.body.data[0].embedding,
         };
       })
-      .filter((result) => result !== null)
+      .filter((result) => result !== null);
 
-      return results;
+    return results;
   }
 
-
-  async embedInput (input: string): Promise<{embeddings: number[]} | null> {
+  async embedInput(input: string): Promise<{ embeddings: number[] } | null> {
     try {
       console.log('LlmService.embedInput called with input:', input);
       const response = await this.client.embeddings.create({
         model: 'text-embedding-3-small',
         input,
       });
-      console.log('LlmService.embedInput response:', response.data[0].embedding.length);
+      console.log(
+        'LlmService.embedInput response:',
+        response.data[0].embedding.length,
+      );
       return { embeddings: response.data[0].embedding };
     } catch (error) {
       console.error('Error in LlmService.embedInput:', error);
@@ -275,7 +280,10 @@ export class LlmService {
       );
 
       if (!response.output_parsed) {
-        console.error('No parsed output from LLM response:', JSON.stringify(response));
+        console.error(
+          'No parsed output from LLM response:',
+          JSON.stringify(response),
+        );
         return null;
       }
 

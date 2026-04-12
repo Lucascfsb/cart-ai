@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { PostgresService } from "../shared/postgres.service";
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PostgresService } from '../shared/postgres.service';
 
 type Cart = {
   id: number;
@@ -16,7 +16,7 @@ type Cart = {
     price: number;
     quantity: number;
   }[];
-}
+};
 
 @Injectable()
 export class CartService {
@@ -34,28 +34,33 @@ export class CartService {
     const existingCart = await this.postgresService.client.query<{
       id: number;
       store_id: number;
-    }>(
-      `SELECT id, store_id FROM carts WHERE user_id = $1 AND active = true`,
-      [userId]
-    );
+    }>(`SELECT id, store_id FROM carts WHERE user_id = $1 AND active = true`, [
+      userId,
+    ]);
 
-    if (existingCart.rows.length > 0 && existingCart.rows[0].store_id === product.rows[0].store_id) {
+    if (
+      existingCart.rows.length > 0 &&
+      existingCart.rows[0].store_id === product.rows[0].store_id
+    ) {
       await this.postgresService.client.query(
         `INSERT INTO cart_items (cart_id, product_id, quantity) 
         VALUES ($1, $2, $3) 
         ON CONFLICT (cart_id, product_id) DO UPDATE SET quantity = cart_items.quantity + EXCLUDED.quantity`,
         [existingCart.rows[0].id, productId, quantity],
-      )
+      );
       return {
         id: existingCart.rows[0].id,
-      }
+      };
     }
 
-    if(existingCart.rows.length > 0 && existingCart.rows[0].store_id !== product.rows[0].store_id) {
+    if (
+      existingCart.rows.length > 0 &&
+      existingCart.rows[0].store_id !== product.rows[0].store_id
+    ) {
       await this.postgresService.client.query(
         `UPDATE carts SET active = false WHERE id = $1`,
-        [existingCart.rows[0].id]
-      )
+        [existingCart.rows[0].id],
+      );
     }
 
     const cart = await this.postgresService.client.query<{ id: number }>(
@@ -67,10 +72,10 @@ export class CartService {
       `INSERT INTO cart_items (cart_id, product_id, quantity) VALUES ($1, $2, $3)`,
       [cart.rows[0].id, productId, quantity],
     );
-    
+
     return {
       id: cart.rows[0].id,
-    }
+    };
   }
 
   async getCart(userId: number) {
@@ -101,20 +106,27 @@ export class CartService {
       WHERE user_id = $1 AND active = true
       GROUP BY carts.id, stores.id
       `,
-      [userId]
+      [userId],
     );
 
-    const hasItens = result.rows[0].items.length > 0 && result.rows[0].items[0].id !== null
+    const hasItens =
+      result.rows[0].items.length > 0 && result.rows[0].items[0].id !== null;
 
-    return result.rows[0] ? 
-      { 
-        ...result.rows[0], 
-        items: hasItens ? result.rows[0].items : [],
-        total: result.rows[0].items.reduce((acc: number, item: { price: number; quantity: number }) => acc + item.price * item.quantity, 0) ?? 0,
-      } : null;
+    return result.rows[0]
+      ? {
+          ...result.rows[0],
+          items: hasItens ? result.rows[0].items : [],
+          total:
+            result.rows[0].items.reduce(
+              (acc: number, item: { price: number; quantity: number }) =>
+                acc + item.price * item.quantity,
+              0,
+            ) ?? 0,
+        }
+      : null;
   }
 
-async updateCartItemQuantity(
+  async updateCartItemQuantity(
     userId: number,
     productId: number,
     quantity: number,

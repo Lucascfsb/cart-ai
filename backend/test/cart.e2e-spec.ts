@@ -10,7 +10,6 @@ describe('Cart (e2e)', () => {
   let app: INestApplication<App>;
   let postgresService: PostgresService;
 
-
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -21,7 +20,9 @@ describe('Cart (e2e)', () => {
     await app.init();
 
     postgresService = moduleFixture.get<PostgresService>(PostgresService);
-    await postgresService.client.query(`TRUNCATE TABLE carts, cart_items RESTART IDENTITY CASCADE`);
+    await postgresService.client.query(
+      `TRUNCATE TABLE carts, cart_items RESTART IDENTITY CASCADE`,
+    );
   });
 
   afterEach(async () => {
@@ -32,7 +33,7 @@ describe('Cart (e2e)', () => {
     const response = await request(app.getHttpServer())
       .post('/cart')
       .send({ productId: 1, quantity: 2 });
-    
+
     expect(response.status).toBe(201);
     expect(response.body).toHaveProperty('id');
 
@@ -41,26 +42,26 @@ describe('Cart (e2e)', () => {
     expect(responseCart.body.id).toBe(response.body.id);
     expect(responseCart.body.items[0].id).toBe(1);
     expect(responseCart.body.items[0].quantity).toBe(2);
-  })
+  });
 
   it('should add a product to an existing cart if the store is the same', async () => {
     const response = await request(app.getHttpServer()).post('/cart').send({
       productId: 1,
-      quantity: 2
-    })
+      quantity: 2,
+    });
 
     expect(response.status).toBe(201);
     expect(response.body).toHaveProperty('id');
 
     const response2 = await request(app.getHttpServer()).post('/cart').send({
       productId: 2,
-      quantity: 3
-    })
+      quantity: 3,
+    });
 
     const response3 = await request(app.getHttpServer()).post('/cart').send({
       productId: 2,
-      quantity: 1
-    })
+      quantity: 1,
+    });
 
     expect(response2.status).toBe(201);
 
@@ -81,21 +82,21 @@ describe('Cart (e2e)', () => {
         id: 2,
         quantity: 4,
       }),
-    )
-  })
+    );
+  });
 
   it('should create a new cart if the store is different', async () => {
     const response = await request(app.getHttpServer()).post('/cart').send({
       productId: 1,
-      quantity: 2
-    }) 
+      quantity: 2,
+    });
     expect(response.status).toBe(201);
     expect(response.body).toHaveProperty('id');
     const response2 = await request(app.getHttpServer()).post('/cart').send({
       productId: 17,
-      quantity: 3
-    })
-    
+      quantity: 3,
+    });
+
     expect(response2.status).toBe(201);
     expect(response2.body).toHaveProperty('id');
     expect(response2.body.id).not.toBe(response.body.id);
@@ -103,7 +104,7 @@ describe('Cart (e2e)', () => {
     const responseCart = await request(app.getHttpServer()).get('/cart/');
     expect(responseCart.status).toBe(200);
     expect(responseCart.body.id).toBe(response2.body.id);
-  })
+  });
 
   it('should update the quantity of an existing product in the cart', async () => {
     const response = await request(app.getHttpServer()).post('/cart').send({
@@ -127,20 +128,21 @@ describe('Cart (e2e)', () => {
     expect(responseCart.body.items[0].quantity).toBe(5);
   });
 
-  it("shold remove a product from the cart is 0", async () => {
+  it('shold remove a product from the cart is 0', async () => {
     const response = await request(app.getHttpServer()).post('/cart').send({
       productId: 1,
       quantity: 2,
-  })
+    });
     expect(response.status).toBe(201);
     expect(response.body).toHaveProperty('id');
-    const response2 = await request(app.getHttpServer())
-      .delete(`/cart/${response.body.id}/items/1`)
+    const response2 = await request(app.getHttpServer()).delete(
+      `/cart/${response.body.id}/items/1`,
+    );
     expect(response2.status).toBe(200);
 
     const responseCart = await request(app.getHttpServer()).get('/cart/');
     expect(responseCart.status).toBe(200);
     expect(responseCart.body.id).toBe(response.body.id);
     expect(responseCart.body.items.length).toBe(0);
-  })
-})
+  });
+});

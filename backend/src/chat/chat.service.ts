@@ -1,12 +1,19 @@
-import { BadGatewayException, ConflictException, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
-import { PostgresService } from "../shared/postgres.service";
-import { LlmService } from "../shared/llm.service";
+import {
+  BadGatewayException,
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
+import { PostgresService } from '../shared/postgres.service';
+import { LlmService } from '../shared/llm/llm.service';
+import id from 'zod/v4/locales/id.js';
 
 type ChatSession = {
   id: number;
   created_at: Date;
   user_id: number;
-}
+};
 
 type ChatMessage = {
   id: number;
@@ -15,40 +22,69 @@ type ChatMessage = {
   openai_message_id: string | null;
   created_at: Date;
   message_type: 'text' | 'suggest_carts_result';
-}
+};
 
 type ChatMessageAction = {
   id: number;
   chat_message_id: number;
   action_type: string;
-  payload: {input: string};
+  payload: { input: string };
   created_at: Date;
   confirmed_at: Date | null;
   executed_at: Date | null;
-}
+};
 
 @Injectable()
 export class ChatService {
   constructor(
     private readonly postgresService: PostgresService,
-    private readonly llmService: LlmService
+    private readonly llmService: LlmService,
   ) {}
 
   async createChatSession(userId: number) {
-    const result = await this.postgresService.client.query<{id: number}>(
-
+    const result = await this.postgresService.client.query<{ id: number }>(
       `INSERT INTO chat_sessions (user_id) VALUES ($1) RETURNING id`,
-      [userId]
+      [userId],
     );
     return result.rows[0];
   }
 
+async getChatSessions(userId: number) {
+    const result = await this.postgresService.client.query<ChatSession>(
+      `SELECT
+        cs.id,
+        cs.user_id,
+        cs.created_at,
+        COALESCE(
+          json_agg(
+            jsonb_build_object(
+              'id', cm.id,
+              'chat_session_id', cm.chat_session_id,
+              'content', cm.content,
+              'sender', cm.sender,
+              'openai_message_id', cm.openai_message_id,
+              'created_at', cm.created_at,
+              'message_type', cm.message_type
+            )
+          ) FILTER (WHERE cm.id IS NOT NULL),
+          '[]'
+        ) AS messages
+        FROM chat_sessions as cs
+        LEFT JOIN chat_messages as cm ON cs.id = cm.chat_session_id
+        WHERE user_id = $1
+        GROUP BY cs.id
+        ORDER BY cs.created_at DESC`,
+      [userId],
+    );
+    return result.rows;
+  }
+
   async getChatSessionById(sessionId: number) {
     const result = await this.postgresService.client.query<{
-      id: number, 
-      user_id: number, 
-      created_at: Date, 
-      messages: ChatMessage[] | null
+      id: number;
+      user_id: number;
+      created_at: Date;
+      messages: ChatMessage[] | null;
     }>(
       `
       SELECT chat_sessions.id, chat_sessions.created_at, chat_sessions.user_id, JSON_AGG(
@@ -86,15 +122,14 @@ export class ChatService {
       return null;
     }
 
-
     const populatedMessages = await this.populateMessages(
       result.rows[0].messages ?? [],
     );
 
     return {
       ...result.rows[0],
-      messages: populatedMessages        
-        .sort(
+      messages:
+        populatedMessages.sort(
           (a, b) =>
             new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
         ) ?? [],
@@ -109,9 +144,16 @@ export class ChatService {
         }
 
         const cartsResult = await this.postgresService.client.query<{
+          id: number;
           store_id: number;
           store_name: string;
           score: number;
+          products: {
+            id: number;
+            name: string;
+            price: number;
+            quantity: number;
+          }[];
         }>(
           `
           SELECT c.id, c.store_id, s.name AS store_name, c.score, jSON_AGG(
@@ -135,9 +177,14 @@ export class ChatService {
         return {
           ...message,
           carts: cartsResult.rows.map((row) => ({
+            id: row.id,
             store_id: row.store_id,
             store_name: row.store_name,
             score: row.score,
+            total: row.products.reduce(
+              (sum, product) => sum + product.price * product.quantity,
+              0,
+            ),
           })),
         };
       }),
@@ -146,26 +193,43 @@ export class ChatService {
 
   async addUserMessage(sessionId: number, content: string) {
     const chatMessage = await this.postgresService.client.query<{
-      openai_message_id: string | null,
+      openai_message_id: string | null;
     }>(
       `SELECT openai_message_id FROM chat_messages WHERE chat_session_id = $1 AND sender = 'assistant' ORDER BY created_at DESC LIMIT 1`,
-      [sessionId]
+      [sessionId],
     );
 
-    const userMessage = await this.addMessageToSession(sessionId, content, 'user');
+    const userMessage = await this.addMessageToSession(
+      sessionId,
+      content,
+      'user',
+    );
 
-    const llmResponse = await this.llmService.answerMessage(content, chatMessage.rows[0]?.openai_message_id || null);
+    const llmResponse = await this.llmService.answerMessage(
+      content,
+      chatMessage.rows[0]?.openai_message_id || null,
+    );
 
     if (!llmResponse) {
       throw new BadGatewayException('Failed to get response from LLMService');
     }
 
-    const llmMessage = await this.addMessageToSession(sessionId, llmResponse.message, 'assistant', llmResponse.responseId, 'text');
+    const llmMessage = await this.addMessageToSession(
+      sessionId,
+      llmResponse.message,
+      'assistant',
+      llmResponse.responseId,
+      'text',
+    );
 
     if (llmResponse.action.type === 'suggest_carts') {
       await this.postgresService.client.query(
         `INSERT INTO chat_messages_actions (chat_message_id, action_type, payload) VALUES ($1, $2, $3) ON CONFLICT (chat_message_id, action_type) DO NOTHING`,
-        [llmMessage.id, llmResponse.action.type, JSON.stringify(llmResponse.action.payload)]
+        [
+          llmMessage.id,
+          llmResponse.action.type,
+          JSON.stringify(llmResponse.action.payload),
+        ],
       );
     }
 
@@ -173,22 +237,22 @@ export class ChatService {
   }
 
   private async addMessageToSession(
-    sessionId: number, 
-    content: string, 
-    sender: 'user' | 'assistant', 
-    openaiMessageId?: string, 
-    messageType: 'text' | 'suggest_carts_result' = 'text'
+    sessionId: number,
+    content: string,
+    sender: 'user' | 'assistant',
+    openaiMessageId?: string,
+    messageType: 'text' | 'suggest_carts_result' = 'text',
   ) {
     const result = await this.postgresService.client.query<{
-      id: number, 
-      content: string, 
-      sender: string, 
-      openai_message_id: string | null, 
-      created_at: Date, 
-      message_type: string
+      id: number;
+      content: string;
+      sender: string;
+      openai_message_id: string | null;
+      created_at: Date;
+      message_type: string;
     }>(
       `INSERT INTO chat_messages (chat_session_id, content, sender, openai_message_id, message_type) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [sessionId, content, sender, openaiMessageId || null, messageType]
+      [sessionId, content, sender, openaiMessageId || null, messageType],
     );
     return result.rows[0];
   }
@@ -196,7 +260,7 @@ export class ChatService {
   async confirmAction(actionId: number, sessionId: number) {
     const session = await this.postgresService.client.query<ChatSession>(
       `SELECT * FROM chat_sessions WHERE id = $1`,
-      [sessionId]
+      [sessionId],
     );
 
     if (session.rows.length === 0) {
@@ -205,7 +269,7 @@ export class ChatService {
 
     const result = await this.postgresService.client.query<ChatMessageAction>(
       `SELECT * FROM chat_messages_actions WHERE id = $1 `,
-      [actionId]
+      [actionId],
     );
     if (result.rows.length === 0) {
       throw new NotFoundException('Chat message action not found');
@@ -217,17 +281,21 @@ export class ChatService {
 
     await this.postgresService.client.query(
       `UPDATE chat_messages_actions SET confirmed_at = NOW() WHERE id = $1`,
-      [actionId]
+      [actionId],
     );
 
     if (result.rows[0].action_type === 'suggest_carts') {
-      const embeddings = await this.llmService.embedInput(result.rows[0].payload.input);
+      const embeddings = await this.llmService.embedInput(
+        result.rows[0].payload.input,
+      );
 
       if (!embeddings) {
-        throw new BadGatewayException('Failed to get embeddings from LLMService');
+        throw new BadGatewayException(
+          'Failed to get embeddings from LLMService',
+        );
       }
 
-const relevantProductsGroupedByStore =
+      const relevantProductsGroupedByStore =
         await this.postgresService.client.query<{
           store_id: number;
           products: {
@@ -257,15 +325,20 @@ const relevantProductsGroupedByStore =
         throw new NotFoundException('No relevant products found');
       }
 
-      const llmResponse = await this.llmService.suggestCarts(relevantProductsGroupedByStore.rows, result.rows[0].payload.input);
+      const llmResponse = await this.llmService.suggestCarts(
+        relevantProductsGroupedByStore.rows,
+        result.rows[0].payload.input,
+      );
 
-      if(!llmResponse || llmResponse.carts) {
-        throw new BadGatewayException('Failed to get cart suggestions from LLMService');
+      if (!llmResponse || llmResponse.carts) {
+        throw new BadGatewayException(
+          'Failed to get cart suggestions from LLMService',
+        );
       }
 
       await this.postgresService.client.query(
         `UPDATE chat_messages_actions SET executed_at = NOW() WHERE id = $1`,
-        [actionId]
+        [actionId],
       );
 
       const message = await this.addMessageToSession(
@@ -273,11 +346,10 @@ const relevantProductsGroupedByStore =
         llmResponse.response,
         'assistant',
         llmResponse.responseId,
-        'suggest_carts_result'
+        'suggest_carts_result',
       );
 
       await this.saveSuggestedCarts(message.id, llmResponse.carts);
-
     } else {
       throw new InternalServerErrorException(
         `Action type ${result.rows[0].action_type} is not supported.`,
@@ -318,14 +390,14 @@ const relevantProductsGroupedByStore =
   }
 
   async chooseCart(cartId: number, userId: number) {
-    const cart = await this.postgresService.client.query<{id: number}>(
+    const cart = await this.postgresService.client.query<{ id: number }>(
       `SELECT id FROM carts WHERE id = $1`,
-      [cartId]
+      [cartId],
     );
 
     await this.postgresService.client.query(
       `UPDATE carts SET active = FALSE WHERE user_id = $1 AND active = TRUE`,
-      [userId]
+      [userId],
     );
 
     if (cart.rows.length === 0) {

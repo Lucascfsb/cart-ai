@@ -1,13 +1,20 @@
-import { Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { Client } from "pg";
+import {
+  Injectable,
+  Logger,
+  OnApplicationBootstrap,
+  OnApplicationShutdown,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Client } from 'pg';
 
 @Injectable()
-export class PostgresService implements OnApplicationBootstrap, OnApplicationShutdown {
+export class PostgresService
+  implements OnApplicationBootstrap, OnApplicationShutdown
+{
   client: Client;
   logger = new Logger(PostgresService.name);
 
-  constructor(    private readonly configService: ConfigService) {
+  constructor(private readonly configService: ConfigService) {
     this.client = new Client({
       user: this.configService.getOrThrow('POSTGRES_USER'),
       host: this.configService.getOrThrow('POSTGRES_HOST'),
@@ -21,13 +28,17 @@ export class PostgresService implements OnApplicationBootstrap, OnApplicationShu
     return this.client
       .connect()
       .then(() => this.logger.log('Connected to PostgreSQL'))
-      .catch((err) => this.logger.error('Failed to connect to PostgreSQL', err));
+      .catch((err) =>
+        this.logger.error('Failed to connect to PostgreSQL', err),
+      );
   }
 
   onApplicationShutdown() {
     return this.client
       .end()
       .then(() => this.logger.log('Disconnected from PostgreSQL'))
-      .catch((err) => this.logger.error('Failed to disconnect from PostgreSQL', err));
+      .catch((err) =>
+        this.logger.error('Failed to disconnect from PostgreSQL', err),
+      );
   }
 }

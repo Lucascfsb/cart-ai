@@ -1,11 +1,11 @@
 "use client";
 
-import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import useSWR from "swr";
 import { getCart, removeCartItem, updateCartItemQuantity } from "../../api";
-import { Cart } from "../../types";
+import { Cart } from "@/types";
 
 export default function CartPage() {
   const cart = useSWR<Cart>("/api/cart", () => getCart());

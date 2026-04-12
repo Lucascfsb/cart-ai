@@ -5,7 +5,6 @@ import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { describe, beforeEach, afterEach, it, expect } from '@jest/globals';
 
-
 describe('Catalog (e2e)', () => {
   let app: INestApplication<App>;
 
@@ -25,17 +24,16 @@ describe('Catalog (e2e)', () => {
 
   it('should get all products', async () => {
     const response = await request(app.getHttpServer()).get('/catalog');
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveLength(36);
-      expect(response.body[0].store).toHaveProperty('id');
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveLength(36);
+    expect(response.body[0].store).toHaveProperty('id');
   });
-
 
   it('should get products for a search query', async () => {
     const response = await request(app.getHttpServer())
-    .get('/catalog')
-    .query({ search: 'feijão' });
+      .get('/catalog')
+      .query({ search: 'feijão' });
     expect(response.status).toBe(200);
     expect(response.body).toHaveLength(2);
-  })
+  });
 });

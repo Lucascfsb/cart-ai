@@ -9,22 +9,23 @@ import { JsonBodyMiddleware } from './middlawares/json-body.middleware';
 
 @Module({
   imports: [
-    CatalogModule, 
+    CatalogModule,
     CartModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    ChatModule
+    ChatModule,
   ],
   controllers: [WebhookController],
   providers: [],
 })
 export class AppModule {
-  configure(consumer: MiddlewareConsumer):void {
-    consumer.apply(RawBodyMiddleware)
+  configure(consumer: MiddlewareConsumer): void {
+    consumer
+      .apply(RawBodyMiddleware)
       .forRoutes({
         path: '/webhooks/openai',
-        method: RequestMethod.POST
+        method: RequestMethod.POST,
       })
       .apply(JsonBodyMiddleware)
       .forRoutes('*');

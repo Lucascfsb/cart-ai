@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MessageCircle, Search, ShoppingCart, ChefHat, Menu, X } from "lucide-react";
 import { useState } from "react";
-import { Button } from "@/src/components/ui/button";
+import { Button } from "@/components/ui/button";
 
 const navigation = [
   { name: "Chat Assistente", href: "/", icon: MessageCircle },

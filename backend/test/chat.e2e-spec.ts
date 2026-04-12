@@ -4,12 +4,11 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { PostgresService } from '../src/shared/postgres.service';
-import { describe, beforeEach, afterEach, it, expect } from '@jest/globals'; 
+import { describe, beforeEach, afterEach, it, expect } from '@jest/globals';
 
 describe('Chat (e2e)', () => {
   let app: INestApplication<App>;
   let postgresService: PostgresService;
-
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -21,7 +20,9 @@ describe('Chat (e2e)', () => {
     await app.init();
 
     postgresService = moduleFixture.get<PostgresService>(PostgresService);
-    await postgresService.client.query(`TRUNCATE TABLE chat_sessions RESTART IDENTITY CASCADE`);
+    await postgresService.client.query(
+      `TRUNCATE TABLE chat_sessions, chat_messages, chat_messages_actions RESTART IDENTITY CASCADE`,
+    );
   });
 
   afterEach(async () => {
@@ -29,19 +30,20 @@ describe('Chat (e2e)', () => {
   });
 
   it('should create a new chat session', async () => {
-    const postResponse = await request(app.getHttpServer())
-      .post('/chat')
-    
+    const postResponse = await request(app.getHttpServer()).post('/chat');
+
     expect(postResponse.status).toBe(201);
     expect(postResponse.body).toHaveProperty('id');
-    const getResponse = await request(app.getHttpServer()).get(`/chat/${postResponse.body.id}`);
+    const getResponse = await request(app.getHttpServer()).get(
+      `/chat/${postResponse.body.id}`,
+    );
     expect(getResponse.status).toBe(200);
     expect(getResponse.body).toHaveProperty('id', postResponse.body.id);
     expect(getResponse.body).toHaveProperty('created_at');
-  })
+  });
 
-  it("should add new message to chat session", async () => {
-    const postResponse = await request(app.getHttpServer()).post('/chat')
+  it('should add new message to chat session', async () => {
+    const postResponse = await request(app.getHttpServer()).post('/chat');
     expect(postResponse.status).toBe(201);
     expect(postResponse.body).toHaveProperty('id');
 
@@ -49,22 +51,27 @@ describe('Chat (e2e)', () => {
 
     const messageResponse = await request(app.getHttpServer())
       .post(`/chat/${sessionId}/message`)
-      .send({content: "Hello, world!"});
+      .send({ content: 'Hello, world!' });
 
     expect(messageResponse.status).toBe(201);
     expect(messageResponse.body).toHaveProperty('id');
-    expect(messageResponse.body).toHaveProperty('content', "Hello, world!");
+    expect(messageResponse.body).toHaveProperty('content', 'Hello, world!');
 
-    const getResponse = await request(app.getHttpServer()).get(`/chat/${sessionId}`);
+    const getResponse = await request(app.getHttpServer()).get(
+      `/chat/${sessionId}`,
+    );
     expect(getResponse.status).toBe(200);
     expect(getResponse.body.messages).toBeDefined();
     expect(getResponse.body.messages[0]).toHaveProperty('sender', 'user');
-    expect(getResponse.body.messages[0]).toHaveProperty('content', "Hello, world!");
+    expect(getResponse.body.messages[0]).toHaveProperty(
+      'content',
+      'Hello, world!',
+    );
     expect(getResponse.body.messages[1]).toHaveProperty('sender', 'assistant');
-  })
+  });
 
-    it("should add new message to chat session with action", async () => {
-    const postResponse = await request(app.getHttpServer()).post('/chat')
+  it('should add new message to chat session with action', async () => {
+    const postResponse = await request(app.getHttpServer()).post('/chat');
     expect(postResponse.status).toBe(201);
     expect(postResponse.body).toHaveProperty('id');
 
@@ -72,29 +79,43 @@ describe('Chat (e2e)', () => {
 
     const messageResponse = await request(app.getHttpServer())
       .post(`/chat/${sessionId}/message`)
-      .send({content: "Quero prepara um bolo de chocolate."});
+      .send({ content: 'Quero prepara um bolo de chocolate.' });
 
     expect(messageResponse.status).toBe(201);
     expect(messageResponse.body).toHaveProperty('id');
-    expect(messageResponse.body).toHaveProperty('content', "Quero prepara um bolo de chocolate.");
+    expect(messageResponse.body).toHaveProperty(
+      'content',
+      'Quero prepara um bolo de chocolate.',
+    );
 
-    const getResponse = await request(app.getHttpServer()).get(`/chat/${sessionId}`);
+    const getResponse = await request(app.getHttpServer()).get(
+      `/chat/${sessionId}`,
+    );
     expect(getResponse.status).toBe(200);
     expect(getResponse.body.messages).toBeDefined();
     expect(getResponse.body.messages[0]).toHaveProperty('sender', 'user');
-    expect(getResponse.body.messages[0]).toHaveProperty('content', "Quero prepara um bolo de chocolate.");
+    expect(getResponse.body.messages[0]).toHaveProperty(
+      'content',
+      'Quero prepara um bolo de chocolate.',
+    );
     expect(getResponse.body.messages[1]).toHaveProperty('sender', 'assistant');
     expect(getResponse.body.messages[1]).toHaveProperty('action');
 
-    const postConfirmResponse = await request(app.getHttpServer())
-      .post(`/chat/${sessionId}/action/${getResponse.body.messages[1].actions[0].id}/confirm`)
+    const postConfirmResponse = await request(app.getHttpServer()).post(
+      `/chat/${sessionId}/action/${getResponse.body.messages[1].actions[0].id}/confirm`,
+    );
 
     expect(postConfirmResponse.status).toBe(201);
-    
-    const getAfterConfirmResponse = await request(app.getHttpServer()).get(`/chat/${sessionId}`);
+
+    const getAfterConfirmResponse = await request(app.getHttpServer()).get(
+      `/chat/${sessionId}`,
+    );
 
     expect(getAfterConfirmResponse.status).toBe(200);
     expect(getAfterConfirmResponse.body.messages).toHaveLength(3);
-    expect(getAfterConfirmResponse.body.messages[2]).toHaveProperty('sender', 'assistant');
-  }, 30000)
-})
+    expect(getAfterConfirmResponse.body.messages[2]).toHaveProperty(
+      'sender',
+      'assistant',
+    );
+  }, 30000);
+});

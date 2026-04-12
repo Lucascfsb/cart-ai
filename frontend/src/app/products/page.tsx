@@ -1,25 +1,26 @@
 "use client";
 
-import { addToCart, getCatalog } from "@/src/api";
-import { Button } from "../../components/ui/button";
-import { Card, CardContent } from "../../components/ui/card";
-import { Input } from "../../components/ui/input";
-import { Product } from "../../types";
+import { addToCart, getCatalog } from "@/api";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Product } from "@/types";
 import { Search, ShoppingCart } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { toast } from "sonner";
 import useSWR from "swr";
 
-export default function ProductsPage() {
+function ProductsPageContent() {
   const params = useSearchParams();
   const search = params.get("q") || "";
 
   const products = useSWR<Product[]>(`/api/products?q=${search}`, () => getCatalog(search));
 
   const handleAddToCart = async (productId: number) => {
-    await addToCart(productId, 1)
-    toast.success("Produto adicionado ao carrinho")
-  }
+    await addToCart(productId, 1);
+    toast.success("Produto adicionado ao carrinho");
+  };
 
   return (
     <div className="p-6 pt-20 lg:pt-6">
@@ -28,6 +29,7 @@ export default function ProductsPage() {
         <p className="text-gray-600 mt-2">Encontre os melhores produtos e preços</p>
       </div>
 
+      {/* Search Filters */}
       <div className="mb-6 space-y-4">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
@@ -43,6 +45,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
+      {/* Products Grid */}
       {products.isLoading && (
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -97,5 +100,19 @@ export default function ProductsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      }
+    >
+      <ProductsPageContent />
+    </Suspense>
   );
 }
