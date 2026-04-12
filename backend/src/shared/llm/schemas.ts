@@ -1,13 +1,22 @@
 import z from 'zod';
 
+const sendMessageActionSchema = z.object({
+  type: z.literal('send_message'),
+});
+
+const suggestCartsActionSchema = z.object({
+  type: z.literal('suggest_carts'),
+  payload: z.object({
+    input: z.string().trim().min(1),
+  }),
+});
+
 export const answerMessageSchema = z.object({
   message: z.string(),
-  action: z.object({
-    type: z.enum(['send_message', 'suggest_carts']),
-    payload: z.object({
-      input: z.string().nullable(),
-    }),
-  }),
+  action: z.discriminatedUnion('type', [
+    sendMessageActionSchema,
+    suggestCartsActionSchema,
+  ]),
 });
 
 export const suggestCartsSchema = z.object({

@@ -109,21 +109,23 @@ export class CartService {
       [userId],
     );
 
-    const hasItens =
-      result.rows[0].items.length > 0 && result.rows[0].items[0].id !== null;
+    const row = result.rows[0];
 
-    return result.rows[0]
-      ? {
-          ...result.rows[0],
-          items: hasItens ? result.rows[0].items : [],
-          total:
-            result.rows[0].items.reduce(
-              (acc: number, item: { price: number; quantity: number }) =>
-                acc + item.price * item.quantity,
-              0,
-            ) ?? 0,
-        }
-      : null;
+    if (!row) {
+      return null;
+    }
+
+    const hasItems = row.items.length > 0 && row.items[0].id !== null;
+
+    return {
+      ...row,
+      items: hasItems ? row.items : [],
+      total: (hasItems ? row.items : []).reduce(
+        (acc: number, item: { price: number; quantity: number }) =>
+          acc + item.price * item.quantity,
+        0,
+      ),
+    };
   }
 
   async updateCartItemQuantity(

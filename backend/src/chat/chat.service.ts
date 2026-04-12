@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { PostgresService } from '../shared/postgres.service';
 import { LlmService } from '../shared/llm/llm.service';
-import id from 'zod/v4/locales/id.js';
 
 type ChatSession = {
   id: number;
@@ -95,8 +94,8 @@ export class ChatService {
           'openai_message_id', chat_messages.openai_message_id,
           'created_at', chat_messages.created_at,
           'message_type', chat_messages.message_type,
-          'actions', CASE
-            WHEN chat_messages_actions.chat_message_id IS NOT NULL THEN JSON_AGG(
+          'action', CASE
+            WHEN chat_messages_actions.id IS NOT NULL THEN
               JSON_BUILD_OBJECT(
                 'action_type', chat_messages_actions.action_type,
                 'payload', chat_messages_actions.payload,
@@ -105,7 +104,6 @@ export class ChatService {
                 'confirmed_at', chat_messages_actions.confirmed_at,
                 'executed_at', chat_messages_actions.executed_at
               )
-            )
             ELSE NULL
           END
         )
@@ -118,6 +116,7 @@ export class ChatService {
       `,
       [sessionId],
     );
+
     if (result.rows.length === 0) {
       return null;
     }
@@ -194,8 +193,10 @@ export class ChatService {
   async addUserMessage(sessionId: number, content: string) {
     const chatMessage = await this.postgresService.client.query<{
       openai_message_id: string | null;
+      content: string;
+      sender: 'user' | 'assistant';
     }>(
-      `SELECT openai_message_id FROM chat_messages WHERE chat_session_id = $1 AND sender = 'assistant' ORDER BY created_at DESC LIMIT 1`,
+      `SELECT openai_message_id, content, sender FROM chat_messages WHERE chat_session_id = $1 AND sender = 'assistant' ORDER BY created_at DESC`,
       [sessionId],
     );
 
@@ -208,6 +209,10 @@ export class ChatService {
     const llmResponse = await this.llmService.answerMessage(
       content,
       chatMessage.rows[0]?.openai_message_id || null,
+      chatMessage.rows.map((msg) => ({
+        content: msg.content,
+        role: msg.sender,
+      })),
     );
 
     if (!llmResponse) {
@@ -330,7 +335,7 @@ export class ChatService {
         result.rows[0].payload.input,
       );
 
-      if (!llmResponse || llmResponse.carts) {
+      if (!llmResponse || !llmResponse.carts) {
         throw new BadGatewayException(
           'Failed to get cart suggestions from LLMService',
         );

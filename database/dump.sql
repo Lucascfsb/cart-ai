@@ -10,40 +10,40 @@ DROP TABLE IF EXISTS chat_messages CASCADE;
 DROP TABLE IF EXISTS chat_messages_actions CASCADE;
 
 CREATE TABLE stores (
-id SERIAL PRIMARY KEY,
-name VARCHAR(255) NOT NULL
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE products (
-id SERIAL PRIMARY KEY,
-name VARCHAR(255) NOT NULL,
-price INTEGER NOT NULL,
-store_id INTEGER REFERENCES stores(id),
-embedding VECTOR(1536) 
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    price INTEGER NOT NULL,
+    store_id INTEGER REFERENCES stores(id),
+    embedding VECTOR(1536) -- Adjust the dimension based on your embedding model
 );
 
 CREATE TABLE users (
-id SERIAL PRIMARY KEY,
-name VARCHAR(100) NOT NULL,
-email VARCHAR(100) UNIQUE NOT NULL,
-password VARCHAR(100) NOT NULL,
-created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE chat_sessions (
-id SERIAL PRIMARY KEY,
-user_id INTEGER REFERENCES users(id),
-created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE chat_messages (
-id SERIAL PRIMARY KEY,
-chat_session_id INTEGER REFERENCES chat_sessions(id),
-content TEXT NOT NULL,
-sender VARCHAR(50) NOT NULL CHECK (sender in ('user', 'assistant')),
-openai_message_id VARCHAR(100) UNIQUE,
-created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-message_type VARCHAR(50) NOT NULL CHECK (message_type in ('text', 'suggest_carts_result')) DEFAULT 'text'
+    id SERIAL PRIMARY KEY,
+    chat_session_id INTEGER REFERENCES chat_sessions(id),
+    content TEXT NOT NULL,
+    sender VARCHAR(50) NOT NULL CHECK (sender in ('user', 'assistant')),
+    openai_message_id VARCHAR(100) UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    message_type VARCHAR(50) NOT NULL CHECK (message_type in ('text', 'suggest_carts_result')) DEFAULT 'text'
 );
 
 CREATE TABLE chat_messages_actions (
@@ -68,23 +68,23 @@ CREATE TABLE carts (
 );
 
 CREATE TABLE cart_items (
-id SERIAL PRIMARY KEY,
-cart_id INTEGER REFERENCES carts(id),
-product_id INTEGER REFERENCES products(id),
-quantity INTEGER NOT NULL DEFAULT 1,
-created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-CONSTRAINT unique_cart_product UNIQUE (cart_id, product_id)
+    id SERIAL PRIMARY KEY,
+    cart_id INTEGER REFERENCES carts(id),
+    product_id INTEGER REFERENCES products(id),
+    quantity INTEGER NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_cart_product UNIQUE (cart_id, product_id)
 );
 
 -- Usuários
 INSERT INTO users (name, email, password) VALUES
-('John Doe', 'johndoe@email.com', 'dummyhash');
+  ('John Doe', 'johndoe@email.com', 'dummyhash');
 
 -- Lojas
 INSERT INTO stores (name) VALUES
-('Supermercado Central'),
-('Mercado Econômico'),
-('SuperShop Express');
+  ('Supermercado Central'),
+  ('Mercado Econômico'),
+  ('SuperShop Express');
 
 -- Produtos
 INSERT INTO products (name, price, store_id) VALUES

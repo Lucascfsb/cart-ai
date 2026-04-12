@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { PostgresService } from '../shared/postgres.service';
 import { ChatService } from './chat.service';
 import { ChatController } from './chat.controller';
-import { LlmModule } from 'src/shared/llm/llm.module';
+import { LlmModule } from '../shared/llm/llm.module';
 
 @Module({
   imports: [LlmModule],

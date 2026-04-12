@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { CatalogController } from './catalog.controller';
 import { CatalogService } from './catalog.service';
 import { PostgresService } from '../shared/postgres.service';
-import { LlmModule } from 'src/shared/llm/llm.module';
+import { LlmModule } from '../shared/llm/llm.module';
 
 @Module({
   imports: [LlmModule],

@@ -37,5 +37,6 @@ export abstract class LlmService {
   abstract answerMessage(
     message: string,
     previousMessageId: string | null,
+    previusMessages: { content: string; role: string }[],
   ): Promise<(AnswerMessage & { responseId: string }) | null>;
 }

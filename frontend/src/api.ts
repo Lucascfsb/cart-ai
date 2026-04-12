@@ -59,7 +59,7 @@ export const createChatSession = async () => {
 
 export const sendMessageToChat = async (sessionId: number, message: string) => {
   try {
-    const response = await api.post(`/chat/${sessionId}/messages`, {
+    const response = await api.post(`/chat/${sessionId}/message`, {
       content: message,
     });
     return response.data;
