@@ -1,37 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
-import z, { custom, string } from 'zod';
+import z from 'zod';
 import { zodTextFormat } from 'openai/helpers/zod';
-import { url } from 'inspector';
 import { CreateEmbeddingResponse } from 'openai/resources';
+import { answerMessageSchema, suggestCartsSchema } from './schemas';
 
-const answerMessageSchema = z.object({
-  message: z.string(),
-  action: z.object({
-    type: z.enum(['send_message', 'suggest_carts']),
-    payload: z.object({
-      input: z.string().nullable(),
-    }),
-  }),
-});
-
-const suggestCartsSchema = z.object({
-  carts: z.array(
-    z.object({
-      store_id: z.number(),
-      score: z.number(),
-      products: z.array(
-        z.object({
-          id: z.number(),
-          quantity: z.number(),
-          name: z.string(),
-        }),
-      ),
-    }),
-  ),
-  response: z.string(),
-});
 
 type AnswerMessage = z.infer<typeof answerMessageSchema>;
 
